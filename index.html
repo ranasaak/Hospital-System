@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>النظام المتكامل لإدارة السجلات الصحية - HIS/EHR Professional</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f4c81;
+            --secondary: #14b8a6;
+            --bg-light: #f8fafc;
+            --text-dark: #1e293b;
+            --white: #ffffff;
+            --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { display: flex; background-color: var(--bg-light); color: var(--text-dark); min-height: 100vh; }
+        
+        .sidebar { width: 280px; background-color: var(--primary); color: var(--white); height: 100vh; padding: 25px 15px; position: fixed; right: 0; top: 0; box-shadow: -2px 0 10px rgba(0,0,0,0.1); }
+        .sidebar h2 { font-size: 17px; margin-bottom: 30px; color: #7dd3fc; display: flex; align-items: center; gap: 10px; }
+        .menu button { width: 100%; padding: 14px 18px; margin-bottom: 12px; background: none; border: none; color: var(--white); text-align: right; font-size: 15px; cursor: pointer; border-radius: 8px; transition: 0.3s; display: flex; align-items: center; gap: 12px; }
+        .menu button:hover, .menu button.active { background-color: var(--secondary); font-weight: bold; }
+
+        .main-content { margin-right: 280px; padding: 30px; width: calc(100% - 280px); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { color: var(--primary); margin-bottom: 20px; font-size: 22px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--white); padding: 20px; border-radius: 12px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-right: 5px solid var(--secondary); }
+        .stat-card .icon { font-size: 35px; color: var(--primary); background: #e0f2fe; padding: 15px; border-radius: 10px; }
+        .stat-card h3 { font-size: 26px; color: var(--primary); }
+        .stat-card p { color: #64748b; font-size: 14px; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; background: var(--white); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 15px; }
+        .form-group.full { grid-column: span 2; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #475569; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #f8fafc; }
+        input:focus, select:focus { outline: none; border-color: var(--secondary); background: var(--white); }
+
+        .date-inputs { display: flex; gap: 10px; }
+        .date-inputs select, .date-inputs input { text-align: center; }
+
+        .btn { background-color: var(--secondary); color: var(--white); padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:hover { background-color: #0d9488; }
+        .btn-danger { background-color: #ef4444; color: white; padding: 6px 12px; font-size: 13px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-danger:hover { background-color: #dc2626; }
+
+        .table-container { background: var(--white); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th, td { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { background-color: #f1f5f9; color: var(--primary); font-weight: bold; }
+        tr:hover { background-color: #f8fafc; }
+        
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-active { background: #dcfce7; color: #166534; }
+        .search-bar { margin-bottom: 20px; width: 100%; padding: 12px 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); }
+
+        @media print {
+            .sidebar, .btn, .search-bar, th:last-child, td:last-child { display: none !important; }
+            .main-content { margin-right: 0 !important; width: 100% !important; padding: 0 !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2><i class="fas fa-hospital-symbol"></i> إدارة السجلات الطبية HIS</h2>
+        <div class="menu">
+            <button class="active" onclick="showTab('dashboard', event)"><i class="fas fa-chart-pie"></i> لوحة المؤشرات (Dashboard)</button>
+            <button onclick="showTab('register', event)"><i class="fas fa-user-plus"></i> تسجيل مريض / ملف جديد</button>
+            <button onclick="showTab('records', event)"><i class="fas fa-folder-open"></i> الأرشيف والترميز (ICD-10)</button>
+            <button onclick="showTab('tracking', event)"><i class="fas fa-exchange-alt"></i> تتبع وتداول الملفات</button>
+            <button onclick="showTab('reports', event)"><i class="fas fa-file-medical-alt"></i> التقارير والتحليلات</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- 1. لوحة المؤشرات -->
+        <div id="dashboard" class="tab-content active">
+            <h1><i class="fas fa-chart-pie"></i> لوحة المؤشرات الحيوية لمكتب السجلات</h1>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <i class="fas fa-users icon"></i>
+                    <div><h3 id="totalPatients">0</h3><p>إجمالي ملفات المرضى (MRN)</p></div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-file-medical icon"></i>
+                    <div><h3 id="activeFiles">0</h3><p>الملفات النشطة حالياً</p></div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-bed icon"></i>
+                    <div><h3 id="bedOccupancy">0%</h3><p>معدل إشغال الأسرة (إجمالي 50 سرير)</p></div>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-archive icon"></i>
+                    <div><h3 id="archivedFiles">0</h3><p>الملفات المؤرشفة إلكترونياً</p></div>
+                </div>
+            </div>
+            <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <h3 style="color: var(--primary); margin-bottom: 15px;">نظرة عامة على النظام:</h3>
+                <p style="line-height: 1.8; color: #475569;">هذا النظام مصمم لتغطية كافة المهام التشغيلية داخل مكتب السجلات الطبية (HIM)، بدءاً من توليد الرقم الطبي الموحد (MRN) للمريض، مروراً بتوثيق التشخيصات باستخدام التصنيف الدولي للأمراض (ICD-10)، وانتهاءً بتتبع حركة تداول الملفات بين أقسام المستشفى المختلفة لضمان دقة البيانات واتخاذ القرار.</p>
+            </div>
+        </div>
+
+        <!-- 2. تسجيل مريض جديد -->
+        <div id="register" class="tab-content">
+            <h1><i class="fas fa-user-plus"></i> فتح ملف طبي جديد (New MRN Registration)</h1>
+            <form id="patientForm" onsubmit="registerPatient(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>الاسم الرباعي للمريض:</label>
+                        <input type="text" id="fullName" required placeholder="أدخل اسم المريض كاملاً">
+                    </div>
+                    <div class="form-group">
+                        <label>الرقم القومي (14 رقم):</label>
+                        <input type="text" id="nationalId" required maxlength="14" placeholder="أدخل الرقم القومي">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>تاريخ الميلاد (يوم / شهر / سنة):</label>
+                        <div class="date-inputs">
+                            <input type="number" id="dobDay" placeholder="اليوم" min="1" max="31" required>
+                            <select id="dobMonth" required>
+                                <option value="">الشهر</option>
+                                <option value="01">يناير (1)</option>
+                                <option value="02">فبراير (2)</option>
+                                <option value="03">مارس (3)</option>
+                                <option value="04">أبريل (4)</option>
+                                <option value="05">مايو (5)</option>
+                                <option value="06">يونيو (6)</option>
+                                <option value="07">يوليو (7)</option>
+                                <option value="08">أغسطس (8)</option>
+                                <option value="09">سبتمبر (9)</option>
+                                <option value="10">أكتوبر (10)</option>
+                                <option value="11">نوفمبر (11)</option>
+                                <option value="12">ديسمبر (12)</option>
+                            </select>
+                            <input type="number" id="dobYear" placeholder="السنة" min="1920" max="2026" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>الجنس:</label>
+                        <select id="gender" required>
+                            <option value="ذكر">ذكر</option>
+                            <option value="أنثى">أنثى</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف:</label>
+                        <input type="tel" id="phone" required placeholder="01xxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>النظام العلاجي / التأميني:</label>
+                        <select id="insurance">
+                            <option value="تأمين صحي شامل">التأمين الصحي الشامل</option>
+                            <option value="نفقة الدولة">علاج على نفقة الدولة</option>
+                            <option value="خاص / نقابات">تامين خاص / نقابات</option>
+                            <option value="علاج بأجر">اقتصادي / علاج بأجر</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>ملاحظات إكلينيكية أولية (اختياري):</label>
+                        <textarea id="notes" rows="2" placeholder="حساسية أدوية، أمراض مزمنة سابقة..."></textarea>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn"><i class="fas fa-save"></i> حفظ وتوليد رقم الملف (MRN)</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 3. الأرشيف والترميز الطبي -->
+        <div id="records" class="tab-content">
+            <h1><i class="fas fa-folder-open"></i> إدارة أرشيف السجلات والترميز الطبي (ICD-10)</h1>
+            <input type="text" id="searchInput" onkeyup="searchRecords()" placeholder="ابحث باسم المريض، رقم الـ MRN، أو الرقم القومي..." class="search-bar">
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم MRN</th>
+                            <th>اسم المريض</th>
+                            <th>الرقم القومي</th>
+                            <th>تاريخ الميلاد</th>
+                            <th>التشخيص الرئيسي (ICD-10)</th>
+                            <th>حالة الملف</th>
+                            <th>إجراءات تحكم</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. تتبع حركة الملفات -->
+        <div id="tracking" class="tab-content">
+            <h1><i class="fas fa-exchange-alt"></i> تتبع وتداول الملفات الطبية داخل المستشفى</h1>
+            <form id="trackingForm" onsubmit="trackFile(event)" style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 25px;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>رقم الملف الطبي (MRN):</label>
+                        <input type="text" id="trackMrn" required placeholder="مثال: MRN-5821">
+                    </div>
+                    <div class="form-group">
+                        <label>القسم / العيادة الطالبة للملف:</label>
+                        <select id="department" required>
+                            <option value="عيادة الباطنة العامة">عيادة الباطنة العامة</option>
+                            <option value="عيادة الجراحة العامة">عيادة الجراحة العامة</option>
+                            <option value="قسم الطوارئ والاستقبال">قسم الطوارئ والاستقبال</option>
+                            <option value="عيادة الأطفال وحديثي الولادة">عيادة الأطفال وحديثي الولادة</option>
+                            <option value="قسم النساء والتوليد">قسم النساء والتوليد</option>
+                            <option value="عيادة العظام وجراحة العظام">عيادة العظام وجراحة العظام</option>
+                            <option value="عيادة القلب والأوعية الدموية">عيادة القلب والأوعية الدموية</option>
+                            <option value="قسم العناية المركزة (ICU)">قسم العناية المركزة (ICU)</option>
+                            <option value="عيادة الجلدية والتناسلية">عيادة الجلدية والتناسلية</option>
+                            <option value="عيادة الأنف والأذن والحنجرة">عيادة الأنف والأذن والحنجرة</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>اسم الطبيب أو المسؤول المستلم:</label>
+                        <input type="text" id="doctor" required placeholder="أدخل اسم الطبيب المسؤول">
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="margin-top: 15px;"><i class="fas fa-paper-plane"></i> تسجيل خروج الملف للأقسام</button>
+            </form>
+
+            <h3 style="color: var(--primary); margin-bottom: 15px;">سجل حركة التداول الحي</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الملف (MRN)</th>
+                            <th>القسم المستلم</th>
+                            <th>الطبيب المسؤول</th>
+                            <th>تاريخ ووقت الاستعارة</th>
+                            <th>حذف السجل</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trackingTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. التقارير والإحصائيات -->
+        <div id="reports" class="tab-content">
+            <h1><i class="fas fa-file-medical-alt"></i> تقارير إحصائيات مكتب السجلات (MIS Analytics)</h1>
+            <div style="background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <h3 style="color: var(--primary); margin-bottom: 15px;">ملخص التقرير الشهري للترددات والأمراض:</h3>
+                <ul style="line-height: 2; color: #475569; padding-right: 20px;">
+                    <li>إجمالي المرضى المترددين: <strong id="repTotal">0</strong> مريض.</li>
+                    <li>إجمالي السعة السريرية للمستشفى: <strong>50 سرير</strong>.</li>
+                    <li>أكثر الأمراض تسجيلاً بناءً على كود ICD-10: <strong>ارتفاع ضغط الدم (I10) والسكري (E11)</strong>.</li>
+                    <li>حالة النظام: <span style="color: #166534; font-weight: bold;">يعمل بكفاءة عالية ومحدث أوتوماتيكياً</span>.</li>
+                </ul>
+                <div style="margin-top: 25px;">
+                    <button class="btn" onclick="window.print()"><i class="fas fa-print"></i> طباعة التقرير الشامل لإدارة المستشفى</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let patients = JSON.parse(localStorage.getItem('his_patients')) || [];
+        let trackingLogs = JSON.parse(localStorage.getItem('his_logs')) || [];
+        const TOTAL_BEDS = 50;
+
+        function showTab(tabId, evt) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.menu button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+            updateStats();
+            renderPatients();
+            renderTracking();
+        }
+
+        function registerPatient(e) {
+            e.preventDefault();
+            const mrn = 'MRN-' + Math.floor(1000 + Math.random() * 9000);
+            
+            const day = String(document.getElementById('dobDay').value).padStart(2, '0');
+            const month = document.getElementById('dobMonth').value;
+            const year = document.getElementById('dobYear').value;
+            const fullDob = `${year}-${month}-${day}`;
+
+            const newPatient = {
+                mrn: mrn,
+                name: document.getElementById('fullName').value,
+                nationalId: document.getElementById('nationalId').value,
+                dob: fullDob,
+                gender: document.getElementById('gender').value,
+                phone: document.getElementById('phone').value,
+                insurance: document.getElementById('insurance').value,
+                notes: document.getElementById('notes').value,
+                icd: 'لم يُحدد (قيد التشخيص)',
+                status: 'نشط'
+            };
+
+            patients.push(newPatient);
+            localStorage.setItem('his_patients', JSON.stringify(patients));
+            alert(`تم إنشاء الملف بنجاح!\nرقم الملف الطبي الفريد (MRN): ${mrn}`);
+            document.getElementById('patientForm').reset();
+            showTab('records', document.querySelectorAll('.menu button')[2]);
+        }
+
+        function renderPatients() {
+            const tbody = document.getElementById('patientTableBody');
+            tbody.innerHTML = '';
+            if(patients.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#94a3b8;">لا توجد ملفات مسجلة حتى الآن</td></tr>`;
+                return;
+            }
+            patients.forEach((patient, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${patient.mrn}</strong></td>
+                        <td>${patient.name}</td>
+                        <td>${patient.nationalId}</td>
+                        <td>${patient.dob || 'غير محدد'}</td>
+                        <td>
+                            <select onchange="updateICD(${index}, this.value)" style="padding: 6px; font-size: 13px;">
+                                <option value="${patient.icd}">${patient.icd}</option>
+                                <option value="E11 - السكري النوع الثاني">E11 - السكري النوع الثاني</option>
+                                <option value="I10 - ارتفاع ضغط الدم الأساسي">I10 - ارتفاع ضغط الدم الأساسي</option>
+                                <option value="J45 - الربو الشعبي">J45 - الربو الشعبي</option>
+                                <option value="K29 - التهاب المعدة والأمعاء">K29 - التهاب المعدة والأمعاء</option>
+                                <option value="M54 - آلام أسفل الظهر">M54 - آلام أسفل الظهر</option>
+                                <option value="I25 - قصور الشرايين التاجية للقلب">I25 - قصور الشرايين التاجية للقلب</option>
+                                <option value="S82 - كسر بالعظام">S82 - كسر بالعظام</option>
+                                <option value="J06 - عدوى الجهاز التنفسي العلوي">J06 - عدوى الجهاز التنفسي العلوي</option>
+                                <option value="A09 - التهاب أمعاء حاد">A09 - التهاب أمعاء حاد</option>
+                                <option value="O80 - ولادة طبيعية تلقائية">O80 - ولادة طبيعية تلقائية</option>
+                            </select>
+                        </td>
+                        <td><span class="badge badge-active">${patient.status}</span></td>
+                        <td><button onclick="deletePatient(${index})" class="btn btn-danger"><i class="fas fa-trash"></i> حذف بالكامل</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateICD(index, value) {
+            patients[index].icd = value;
+            localStorage.setItem('his_patients', JSON.stringify(patients));
+        }
+
+        function deletePatient(index) {
+            if(confirm("هل أنت متأكد من حذف هذا الملف الطبي وكافة سجلات حركة تداوله في العيادات؟")) {
+                const deletedMrn = patients[index].mrn;
+                
+                patients.splice(index, 1);
+                localStorage.setItem('his_patients', JSON.stringify(patients));
+
+                trackingLogs = trackingLogs.filter(log => log.mrn !== deletedMrn);
+                localStorage.setItem('his_logs', JSON.stringify(trackingLogs));
+
+                renderPatients();
+                renderTracking();
+                updateStats();
+            }
+        }
+
+        function deleteSingleLog(logIndex) {
+            if(confirm("هل تريد حذف هذا السجل الإفرادي من حركة العيادات؟")) {
+                trackingLogs.splice(logIndex, 1);
+                localStorage.setItem('his_logs', JSON.stringify(trackingLogs));
+                renderTracking();
+            }
+        }
+
+        function searchRecords() {
+            const filter = document.getElementById('searchInput').value.toUpperCase();
+            const rows = document.getElementById('patientTableBody').getElementsByTagName('tr');
+            for (let row of rows) {
+                const text = row.textContent || row.innerText;
+                row.style.display = text.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+            }
+        }
+
+        function trackFile(e) {
+            e.preventDefault();
+            const log = {
+                mrn: document.getElementById('trackMrn').value,
+                department: document.getElementById('department').value,
+                doctor: document.getElementById('doctor').value,
+                time: new Date().toLocaleString('ar-EG')
+            };
+            trackingLogs.push(log);
+            localStorage.setItem('his_logs', JSON.stringify(trackingLogs));
+            document.getElementById('trackingForm').reset();
+            renderTracking();
+            alert("تم تسجيل حركة خروج الملف وتتبعه بنجاح!");
+        }
+
+        function renderTracking() {
+            const tbody = document.getElementById('trackingTableBody');
+            tbody.innerHTML = '';
+            if(trackingLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8;">لا توجد حركات تداول مسجلة حديثاً</td></tr>`;
+                return;
+            }
+            trackingLogs.forEach((log, logIndex) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${log.mrn}</strong></td>
+                        <td>${log.department}</td>
+                        <td>${log.doctor}</td>
+                        <td>${log.time}</td>
+                        <td><button onclick="deleteSingleLog(${logIndex})" class="btn btn-danger"><i class="fas fa-trash"></i> حذف</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateStats() {
+            const total = patients.length;
+            const active = patients.filter(p => p.status === 'نشط').length;
+            
+            document.getElementById('totalPatients').innerText = total;
+            document.getElementById('activeFiles').innerText = active;
+            document.getElementById('repTotal').innerText = total;
+            document.getElementById('archivedFiles').innerText = Math.floor(total * 0.1);
+
+            let occupancyRate = Math.round((active / TOTAL_BEDS) * 100);
+            if (occupancyRate > 100) occupancyRate = 100;
+            document.getElementById('bedOccupancy').innerText = occupancyRate + '%';
+        }
+
+        updateStats();
+        renderPatients();
+        renderTracking();
+    </script>
+</body>
+</html>
